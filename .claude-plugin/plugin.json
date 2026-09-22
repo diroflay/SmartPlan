@@ -1,0 +1,22 @@
+{
+  "name": "smart-plan",
+  "version": "1.0.0",
+  "description": "Multi-provider implementation plans: an orchestrator dispatches each task to the best model per provider (Anthropic, OpenAI, Google, DeepSeek, GLM, Qwen, OpenRouter) with independent review.",
+  "author": {
+    "name": "diroflay",
+    "url": "https://github.com/diroflay"
+  },
+  "homepage": "https://github.com/diroflay/SmartPlan",
+  "repository": "https://github.com/diroflay/SmartPlan",
+  "license": "MIT",
+  "keywords": [
+    "planning",
+    "multi-agent",
+    "multi-provider",
+    "orchestrator",
+    "skill",
+    "codex",
+    "gemini",
+    "opencode"
+  ]
+}

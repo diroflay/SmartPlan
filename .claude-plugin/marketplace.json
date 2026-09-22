@@ -1,0 +1,26 @@
+{
+  "name": "smartplan",
+  "owner": {
+    "name": "diroflay",
+    "url": "https://github.com/diroflay"
+  },
+  "metadata": {
+    "description": "SmartPlan marketplace: multi-provider planning skill for coding agents.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "smart-plan",
+      "source": "./",
+      "description": "Multi-provider implementation plans with per-model workers and independent review.",
+      "version": "1.0.0",
+      "author": {
+        "name": "diroflay"
+      },
+      "homepage": "https://github.com/diroflay/SmartPlan",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": ["planning", "multi-agent", "multi-provider", "orchestrator"]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+# Plan output produced by the skill in target projects
+.to-do/
+
+# Local drafts and backups
+_backup/
+*.bak
+*.orig
+*.tmp
+
+# Secrets and local config
+.env
+.env.*
+*.key
+.claude/settings.local.json
+
+# Logs and run artefacts
+*.log
+*.events
+*.status
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Tooling
+node_modules/

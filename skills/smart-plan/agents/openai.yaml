@@ -1,0 +1,6 @@
+interface:
+  display_name: Smart Plan
+  short_description: Multi-provider implementation plan with orchestrator, per-model workers and independent review
+  default_prompt: Use $smart-plan to create a multi-provider implementation plan for this feature.
+policy:
+  allow_implicit_invocation: false
