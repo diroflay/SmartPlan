@@ -8,13 +8,13 @@ Status legend: **[verified]** = executed through the scripts on Windows 11 (Git 
 
 | Step | Rule |
 |---|---|
-| Input | The brief file is piped on **stdin** (byte-exact; on Windows through `cmd.exe` redirection, not the PowerShell pipeline, which re-encodes). Never a long prompt as an argument. |
+| Input | The brief file is piped on **stdin** (byte-exact; on Windows through `cmd.exe` redirection, not the PowerShell pipeline, which re-encodes). Never a long prompt as an argument. Exception: `agy` ignores stdin, so it gets a one-line prompt pointing to the brief's path. |
 | Output | The worker writes its ≤15-line report to the result path named in the brief **and** the script captures the final message itself (output flag or event log). Either one is enough. |
 | Session | The session ID is captured from the JSON output and journaled. Follow-ups resume that session. |
 | Limits | The script applies the timeout itself: `timeout` → `gtimeout` → built-in watchdog; PowerShell kills the whole process tree. One coherent task per run. |
 | Visibility | The script keeps `<RESULT>.status` up to date (`task` from env `SP_TASK`, harness, model, `state` = running → done / failed / timeout, then exit, session, result) and asks every harness that can for a **streamed** event log (`<RESULT>.events`). `status.(sh|ps1)` turns both into a board without spending a model token. |
 | Blocking | Harness shell tools cut long calls (Claude Code: 10 min) well under the 1800 s dispatch timeout: background shell, or env `SP_DETACH=1` (the script re-launches itself detached and returns) then `status.(sh|ps1) wait <max_s> <RESULT>…`. |
-| Permissions | Writers get the narrowest mode that allows file edits in the workspace. Reviewers run read-only. No bypass flag (`SKILL.md` § Rules). A harness that cannot edit headlessly under the user's settings: route that model through another channel and say so. |
+| Permissions | Writers get the narrowest mode that allows file edits in the workspace. Reviewers run read-only. No bypass flag (`SKILL.md` § Rules). |
 | Git | Workers never run git write commands. The orchestrator checks `HEAD` and `git status --short` after each run. |
 
 Portability handled by the scripts: no dependency on `timeout`, `jq` or Node (Node if present, else `grep` / `sed`; PowerShell parses JSON natively), bash 3.2 compatible (stock macOS), ASCII-only PowerShell that runs on stock 5.1, paths with spaces, non-git folders.
@@ -44,6 +44,19 @@ Portability handled by the scripts: no dependency on `timeout`, `jq` or Node (No
 | Caveats | `exec` defaults to a read-only sandbox: edits need `-s workspace-write`. `--full-auto` is deprecated. `codex mcp-server` was removed in 0.154 — use `codex exec`. Outside a git repo add `--skip-git-repo-check`. Windows: the native sandbox needs a one-time elevated setup. |
 
 **Native subagents** (orchestrator in Codex): stable, on by default (`spawn_agent`, `wait_agent`, `send_input`… — tool names not re-confirmed). Reusable definitions: `.codex/agents/<name>.toml` with `name`, `description`, `developer_instructions`, optional `model`, `model_reasoning_effort`, `sandbox_mode`. Codex delegates only when told to — name the agent explicitly. Subagents inherit the parent's sandbox. Custom providers must speak the Responses API, so non-OpenAI models are reached by shelling out, not as Codex subagents.
+
+## Google — Antigravity CLI (`agy`) [verified 1.1.10–1.2.7; flags unchanged in 1.2.14, 2026-09-30] and Gemini CLI (`gemini`) [docs]
+
+| | `agy` [verified] | `gemini` [docs] |
+|---|---|---|
+| Write task | `agy -p "Read the task brief at this path and execute it exactly: <BRIEF path> - relative paths in the brief start at the repository root: <repo>" --mode accept-edits --add-dir <repo> --output-format stream-json --print-timeout <N>s [--model <slug>]` | `gemini -m <pro\|flash\|model-id> --approval-mode auto_edit -o json -p "Execute the task brief provided on stdin." < <BRIEF>` |
+| Read-only | `--mode plan` | `--approval-mode default` (or `plan`) |
+| Result / session | last event (`"event":"result"`): `response`, `conversation_id`, `status`; before it one `step_update` event per tool call (live activity) | JSON `response` (+ `stats`, `error`) · exit 0 ok, 1 API error, 42 input error, 53 turn limit. Session ID: captured only if the JSON carries one (best effort) |
+| Resume | `--conversation <id>` | `gemini -r <session>` |
+| Auth check | **No status command exists.** The smoke test is the check. | same |
+| Caveats | **Does not read the prompt from stdin** — a stdin brief yields an empty response. **Print mode loads the repository's `AGENTS.md` / `GEMINI.md` only with `--add-dir <repo>`** — without it the worker runs with no project rules, even when started inside the repository [verified 1.2.7, bash and PowerShell, 2026-09-21]; `.agents/rules/` is not loaded in print mode at all. `--print-timeout` defaulted to **5 minutes** in 1.1.10 (`0` = no limit in 1.2.7): always set. Without the repository-root sentence it looks for relative paths next to the brief. **Any auto-denied action empties the final response** (`denied_actions` in the result event, exit 0, `result=missing`). Model `auto` = omit `--model`; list with `agy models`. Headless shell commands need an allow-rule in the user's `agy` settings, otherwise they are auto-denied. | `--yolo` and `--allowed-tools` are deprecated. `auto_edit` approves edits only. Not streamed: its `stream-json` output has no single `response` field to capture — the board shows state and time only. |
+
+**Native subagents**: `gemini` → `.gemini/agents/<name>.md` (frontmatter `name`, `description`, `tools`, `model`, `max_turns`, `timeout_mins`), each exposed to the main agent as a tool. `agy` → `.agents/agents/<name>.md`, `model: inherit|flash|pro`.
 
 ## Bridge — opencode (`opencode`)
 
@@ -77,21 +90,26 @@ By tier, for the version that was latest on that date; a newer version may cost 
 |---|---|---|---|
 | fable 5.1 · opus 5.5 · sonnet 5.5 · haiku 4.5 | 10 / 50 · 4 / 20 · 2 / 10 · 1 / 5 | same | Claude Pro / Max |
 | gpt-6-astra · gpt-6-sol · gpt-6-luna | 10 / 50 · 2 / 10 · 0.10 / 0.50 (sol: prompts > 272k tokens bill 2× in / 1.5× out) | same | ChatGPT plan |
+| gemini 3.1 pro · 3.8 flash | 2 / 12 · 0.75 / 3.75 | same | Google AI plan (`agy`) |
+| deepseek-v4.1-flash | 0.30 / 1.20 peak · **0.15 / 0.60 off-peak**; cache hit 0.006 / 0.003 | 0.30 / 1.20 (cheaper third-party hosts exist, fp4 / fp8) | none |
+| glm-5.3 · glm-5.3-flash | 1.40 / 4.40 · ≈ 0.15 / 0.50 | **0.91 / 2.86** (third-party hosts; Z.AI's own host = 1.40 / 4.40) | GLM Coding Plan, from $18 / month |
+| qwen3.8-flash · max | 0.15 / 0.47 · 2 / 6 | same (Alibaba is the only host) | Alibaba Token Plan, from ¥39 / month |
 
 ## Model choice (checked 2026-09-30 — why the routing is what it is; re-check at each refresh)
 
 - **opus** ≥ fable on nearly every coding / agentic benchmark at 40 % of the price (AA Intelligence #1, Coding Agent Index #1 = 66, WebDev arena #1, best CodeRabbit review 8/13) → planner, orchestrator, [lead], arbiter. **fable** only as alternate.
 - **sonnet** ≈ **sol** (same price): sonnet has the best Terminal-Bench 4.0 of all (70.6) but the most output tokens per task measured by AA (~193k); sol ≈ astra on DeepSWE at ~1/5 the cost. Both = routine coding, never [lead].
 - **luna**: AA Intelligence 37 at $0.07 per task — about 4× cheaper than any other cheap model at similar quality → scout, reader, chores. Context window not published.
-- **haiku 4.5**: AA Intelligence 17, WebDev #111, retirement not before 2026-10-15, no successor yet.
-- Caveats: many scores are vendor-reported; SWE-bench Verified is contaminated; METR and SWE-rebench had not measured these models on that date. Sources: artificialanalysis.ai (leaderboards, articles on Sonnet 5.5, Opus 5.5, GPT-6 Astra, GPT-6 Sol / Luna), arena.ai/leaderboard/code/webdev, coderabbit.ai/blog/sonnet-5-5-model-review, anthropic.com/claude-sonnet-5-5, learn.chatgpt.com/docs/models.
+- **deepseek flash** (V4.1): best cheap DeepSWE (74.2, vendor) and beats DeepSeek's own V4-Pro → cheap continuation. **glm flash** ≈ same price, first alternate. **qwen flash**: best cheap WebDev rank (#12) → frontend.
+- **haiku 4.5**: AA Intelligence 17, WebDev #111, retirement not before 2026-10-15, no successor yet. **Gemini**: newest Pro is still 3.1 preview; 3.8 flash costs ~5× the other flash models — not routed.
+- Caveats: many scores are vendor-reported; SWE-bench Verified is contaminated; METR and SWE-rebench had not measured these models on that date. Sources: artificialanalysis.ai (leaderboards, articles on Sonnet 5.5, Opus 5.5, GPT-6 Astra, GPT-6 Sol / Luna), arena.ai/leaderboard/code/webdev, coderabbit.ai/blog/sonnet-5-5-model-review, api-docs.deepseek.com/updates, anthropic.com/claude-sonnet-5-5, learn.chatgpt.com/docs/models.
 
-OpenRouter adds no markup per token but charges **5.5 % on every credit purchase**, so at equal list price the official key is 5.5 % cheaper.
+OpenRouter adds no markup per token but charges **5.5 % on every credit purchase**, so at equal list price the official key is 5.5 % cheaper. DeepSeek off-peak = outside 01:00–04:00 and 06:00–10:00 UTC Monday–Friday. The only case where OpenRouter is cheaper is GLM 5.3 on third-party hosts (quantized). The Alibaba *Coding* Plan ($50 / month) does not include Qwen 3.8 and forbids non-interactive use.
 
 ## Measurements
 
-- **Free models** (2026-09-21, scouts on pallets/flask): of six `:free` OpenRouter models, 3 gave a usable pack, 1 a thin one, 1 stopped without a report, 1 was refused with HTTP 429; they share 50–1 000 requests / day, and free endpoints may log or train on the code they are sent.
-- **Code graph** (2026-09-21, pallets/flask — 236 files, 18k Python lines; scout = a cheap model via opencode, same brief with and without the graph, one run each): localized change — graph 147k input tokens / $0.0065 vs search-and-read 103k / $0.0042; cross-cutting caller chain — graph 254k / $0.0093 vs 143k / $0.0057. Context packs of equal quality. On a repo this size the graph saved **nothing**: a modern agent's own search and read tools are already frugal, and the model used the graph *in addition to* them. The vendor's "120× fewer tokens" is measured against reading whole files. Expect a benefit only on large repos or monorepos, where search results explode — not measured here.
+- **Free models** (2026-09-21, scouts on pallets/flask): of six `:free` OpenRouter models, 3 gave a usable pack, 1 a thin one, 1 stopped without a report, 1 was refused with HTTP 429; they share 50–1 000 requests / day, and free endpoints may log or train on the code they are sent. The paid scout (`deepseek-v4.1-flash`, token-frugal brief) costs $0.0045 per part with a 20k-token final context, 12k of which is the harness's own system prompt.
+- **Code graph** (2026-09-21, pallets/flask — 236 files, 18k Python lines; scout = `deepseek-v4.1-flash` via opencode, same brief with and without the graph, one run each): localized change — graph 147k input tokens / $0.0065 vs search-and-read 103k / $0.0042; cross-cutting caller chain — graph 254k / $0.0093 vs 143k / $0.0057. Context packs of equal quality. On a repo this size the graph saved **nothing**: a modern agent's own search and read tools are already frugal, and the model used the graph *in addition to* them. The vendor's "120× fewer tokens" is measured against reading whole files. Expect a benefit only on large repos or monorepos, where search results explode — not measured here.
 
 ## Sources (official — used by the preflight refresh step; all reachable 2026-09-20)
 
@@ -99,8 +117,11 @@ OpenRouter adds no markup per token but charges **5.5 % on every credit purchase
 |---|---|---|
 | Anthropic | https://code.claude.com/docs/en/headless · https://code.claude.com/docs/en/sub-agents | https://github.com/anthropics/claude-code |
 | OpenAI | https://developers.openai.com/codex | https://github.com/openai/codex |
+| Google | https://geminicli.com/docs · https://antigravity.google/docs | https://github.com/google-gemini/gemini-cli |
 | opencode | https://opencode.ai/docs | https://github.com/anomalyco/opencode |
 | OpenRouter | https://openrouter.ai/docs | — |
+| DeepSeek | https://api-docs.deepseek.com | — |
+| Z.ai (GLM) | https://docs.z.ai | — |
 | TypeSafe (Jev) | https://docs.typesafe.ai/llms.txt (index; add `.md` to any page path) · limits and price: `/models.md` · known weaknesses: `/model-jaggedness/jev-1.13.md` | https://github.com/typesafe-ai/skills |
 | Code graph | — | https://github.com/DeusData/codebase-memory-mcp |
 

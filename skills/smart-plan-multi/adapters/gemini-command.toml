@@ -1,0 +1,9 @@
+# Optional — Gemini CLI only. Copy to ~/.gemini/commands/smart-plan-multi.toml to get a /smart-plan-multi slash command.
+# Antigravity CLI (agy) does not need this: every skill is already available as /<skill-name>.
+description = "Create a multi-provider implementation plan in .to-do/ (smart-plan-multi skill)"
+prompt = """
+Activate the `smart-plan-multi` skill and follow it exactly.
+
+Feature request:
+{{args}}
+"""

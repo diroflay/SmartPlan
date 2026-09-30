@@ -1,0 +1,4 @@
+# Shell scripts must keep LF endings or they break on Linux and macOS.
+*.sh  text eol=lf
+*.ps1 text
+*.md  text eol=lf

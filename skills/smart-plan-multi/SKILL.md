@@ -1,16 +1,16 @@
 ---
-name: smart-plan
-description: Creates a single-provider implementation plan for a feature and saves it to .to-do/. The plan tells an orchestrator agent how to dispatch coding work to the best model per task type within one provider - Anthropic (Claude Code) or OpenAI (Codex) - review each task independently, commit, journal and report progress. Use when the user asks for a smart plan, a multi-agent or multi-model plan with one provider, or invokes smart-plan with a feature request. For several providers use smart-plan-multi. Not for an ordinary implementation plan, and not for executing or resuming a plan.
-compatibility: Needs shell access and git. Uses claude or codex (the chosen provider), curl for the optional Jev review gate, and opencode only for the optional OpenRouter channel.
+name: smart-plan-multi
+description: Creates a multi-provider implementation plan for a feature and saves it to .to-do/. The plan tells an orchestrator agent how to dispatch coding work to the best model per task type across providers (Anthropic, OpenAI, Google, DeepSeek, GLM, Qwen, OpenRouter), review each task independently, commit, journal and report progress. Use only when the user asks for a multi-provider or cross-provider plan, or invokes smart-plan-multi with a feature request. A plain smart plan or a single-provider plan goes to smart-plan. Not for executing or resuming a plan.
+compatibility: Needs shell access and git. Uses whichever of these CLIs the routing requires - claude, codex, agy or gemini, opencode - plus curl for the Jev review gate.
 metadata:
   version: "1.1.0"
 ---
 
-# Smart Plan
+# Smart Plan Multi
 
-Write `.to-do/<plan-name>.md`: a plan executed later by an **orchestrator agent** that never codes — it dispatches each task to the worker model of **one provider** (Anthropic or OpenAI) that is strongest for it, and has every task independently reviewed.
+Write `.to-do/<plan-name>.md`: a plan executed later by an **orchestrator agent** that never codes — it dispatches each task to the worker model that is strongest for it, across providers, and has every task independently reviewed.
 
-Harness-neutral: runs in any agent that supports Agent Skills and can run shell commands. Tool names differ per harness; instructions here describe actions ("run a shell command", "read the file", "search the codebase"). Host neither Claude nor GPT: `references/preflight.md` §5.
+Harness-neutral: runs in any agent that supports Agent Skills and can run shell commands. Tool names differ per harness; instructions here describe actions ("run a shell command", "read the file", "search the codebase").
 
 ## Input
 
@@ -20,27 +20,27 @@ Harness-neutral: runs in any agent that supports Agent Skills and can run shell 
 
 | File | Read |
 |---|---|
-| `routing.md` | Phase 0 — provider choice and who does what; the only file users edit |
+| `routing.md` | Phase 0 — who does what; the only file users edit |
 | `references/preflight.md` | Phase 0 — checks, smoke tests, help-then-abort, Abort Report |
 | `references/providers.md` | Phase 0 and 3 — model arguments, prompting notes and worker caveats per provider |
 | `references/plan-template.md` | Phase 3 |
-| `references/multi-provider.md` | Phase 4 — unless `MULTI_PROVIDER_REPO: off` |
+| `references/multi-provider.md` | Phase 4 — only when the repository is not already compatible |
 | `references/code-graph.md` | only when `REQUIRE_CODEGRAPH` is on |
 | `references/harness-internals.md` | only for the preflight refresh step, or to fix a script |
 | `scripts/*.sh` · `*.ps1` | **run, never read**: `preflight`, `dispatch`, `status`, `jev`, `review` |
-| `scripts/protocol.md` | the orchestrator's execution protocol — read only on a possible conflict (project constraint, refresh drift) |
+| `scripts/protocol.md` | the orchestrator's execution protocol — read only if the project may conflict with it or the refresh found drift |
 
 Output: `PLAN_FILE` = `.to-do/<plan-name>.md` in the project (kebab-case name from the feature) and the tools folder `.to-do/_tools/`. Do not create `.to-do/<plan-name>/`; the orchestrator does.
 
-Never hand-write harness commands, timeouts or stdin plumbing — they differ per OS. Use the scripts (flavour: `references/preflight.md` §0).
+Never hand-write harness commands, `curl` calls, timeouts or stdin plumbing — they differ per OS. Use the scripts (flavour: `references/preflight.md` §0).
 
 ## Workflow
 
 ### Phase 0 — Preflight
-Read `routing.md` and resolve `PROVIDER` (policy there) — from then on use only that provider's column. Resolve `USE_JEV` (policy there). Then follow `references/preflight.md` to its end. Abort per `references/preflight.md`.
+Read `routing.md`, then follow `references/preflight.md` to its end. Abort per `references/preflight.md` §6.
 
 ### Phase 1 — Codebase scan (quick, token-frugal)
-Give workers the rules of this codebase, not a tour of it. Search before you read; read line ranges, not whole files (`REQUIRE_CODEGRAPH` on: the code graph for structure). Read only: `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` (only if present) / README / CONTRIBUTING, manifests, lint / format / test config, top-level layout, and one or two representative files per layer the feature touches. Extract:
+Give workers the rules of this codebase, not a tour of it. Search before you read; read line ranges, not whole files (`REQUIRE_CODEGRAPH` on: the code graph for structure). Read only: `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` / README / CONTRIBUTING, manifests, lint / format / test config, top-level layout, and one or two representative files per layer the feature touches. Extract:
 - stack and versions that matter; layout relevant to the feature
 - exact commands: install, build, test (suite and single test), lint, typecheck
 - conventions actually observed: naming, error handling, data / state patterns, test style and location, styling, i18n
@@ -64,27 +64,27 @@ Give workers the rules of this codebase, not a tour of it. Search before you rea
 2. Write the plan from `references/plan-template.md`, with `references/providers.md` for plan §4.
 
 ### Phase 4 — Multi-provider repository
-Each harness loads only its own instruction file: rules kept in `CLAUDE.md` alone never reach a Codex worker, and the plan may be executed from another harness. Policy `MULTI_PROVIDER_REPO` = `off` → skip. Otherwise run `preflight agents` and follow `references/multi-provider.md`. Then fill **Agent instructions** (plan §2) and `AGENT_FILES` (plan §4). Run no git command.
+Each harness loads only its own instruction file: rules kept in `CLAUDE.md` alone never reach a Codex, Gemini or opencode worker. Policy `MULTI_PROVIDER_REPO` = `off` → skip. Otherwise run `preflight agents`: `RESULT compatible` → report `already compatible`; else follow `references/multi-provider.md`. Then fill **Agent instructions** (plan §2) and `AGENT_FILES` (plan §4). Run no git command.
 
 ### Phase 5 — Report
 Output the Report below.
 
 ## Rules
 - The plan is for agents: unambiguous goals, low token cost, no narrative. Tables and bullets over prose.
+- Model versions: `routing.md` § Roles.
 - Never copy, re-type or edit `protocol.md` into the plan. A protocol rule that cannot apply to this project → say so in plan §5 instead of silently dropping it.
-- Never put a permission-bypass or sandbox-bypass flag in a plan.
-- Do not start implementing. Do not create branches, sub-plans or the journal. In the project, outside `.to-do/`, the only files this skill may write are the agent instruction files of Phase 4 (`AGENTS.md`, `CLAUDE.md`; `GEMINI.md` only if present). Outside the project: only `~/.cache/smart-plan/` (`refreshed`, and the scripts' `smoke.tsv`), plus the code-graph index when `REQUIRE_CODEGRAPH` is on.
+- Never put a permission-bypass or sandbox-bypass flag (`--dangerously-*`, `--yolo`) in a plan.
+- Do not start implementing. Do not create branches, sub-plans or the journal. In the project, outside `.to-do/`, the only files this skill may write are the agent instruction files of Phase 4 (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`).
 
 ## Report
 
 ```
-# ✅ Smart Plan Created
+# ✅ Smart Plan Multi Created
 
 - **File**: .to-do/<plan-name>.md
 - **Planned by**: <model> in <harness> <(routed planner was …) if different>
-- **Provider**: <anthropic | openai> (<host | forced by routing.md | named in the request>)
 - **Parts**: <n> (<name — type — weight>, …)
-- **Routing**: <role → model via channel>, … · Review: <Jev gate + reader | reader alone (Jev: no)>, arbiter
+- **Routing**: <role → model via channel>, … · Review: <gate + reader | reader alone (REVIEW_GATE: off)>, arbiter
 - **Substitutions**: <none | role: primary → alternate (reason)>
 - **Provider drift**: <none | harness or model: what changed vs the snapshot | not checked (no web access)>
 - **Parallel-safe**: <pairs | none>

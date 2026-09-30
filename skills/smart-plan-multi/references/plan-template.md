@@ -4,7 +4,6 @@ Write `PLAN_FILE` from the template below. The execution protocol (dispatch, loo
 
 - §1–§3 and §5 are authored for the feature.
 - §4 is generated from the resolved routing (`routing.md` + preflight results): real model IDs and harnesses, no `latest`, no unresolved placeholder. Rows: every role this plan uses (`routing.md`).
-- The plan must be executable by an orchestrator in **any** harness with shell access: never name a harness-specific tool; describe the action ("run a shell command", "spawn a subagent").
 
 `````markdown
 # <Feature title>
@@ -26,7 +25,7 @@ Write `PLAN_FILE` from the template below. The execution protocol (dispatch, loo
 - **Conventions**: <observed rules, one line each>
 - **Imitate**: <reference files>
 - **Do not touch**: <paths>
-- **Agent instructions**: `AGENTS.md` is the single source of project rules — every worker's harness loads it (`CLAUDE.md`, and `GEMINI.md` only if present, import it). <MULTI_PROVIDER_REPO `report` or `off`: replace with what exists and which workers do not see it — their briefs must then carry the rules.>
+- **Agent instructions**: `AGENTS.md` is the single source of project rules — every worker's harness loads it (`CLAUDE.md` and `GEMINI.md` only import it). <MULTI_PROVIDER_REPO `report` or `off`: replace with what exists and which workers do not see it — their briefs must then carry the rules.>
 
 ## 3. Parts
 
@@ -49,7 +48,7 @@ Major = sub-plan written first (protocol §2). Minor = one task, one self-contai
 
 | Task type / role | Worker model | Channel | Harness | Model argument |
 |---|---|---|---|---|
-| <type> | <model name> | <subscription \| api-key \| openrouter> | <claude \| codex \| opencode> | `<exact ID for that harness>` |
+| <type> | <model name> | <subscription \| api-key \| openrouter> | <claude \| codex \| agy \| gemini \| opencode> | `<exact ID for that harness>` |
 
 | Variable | Value |
 |---|---|
@@ -57,9 +56,9 @@ Major = sub-plan written first (protocol §2). Minor = one task, one self-contai
 | `BRANCH` | `feat/<plan-name>` |
 | `SHELL` | <bash \| powershell> — flavour that ran preflight; use the other one if this machine lacks it |
 | `ORCHESTRATOR` | <model> in <harness> — <**required** \| preferred: any harness with shell access can run this plan (STRICT_HOST off, or substituted)> |
-| `GATE` | <resolved Jev model \| `off`> |
+| `GATE` | <resolved Jev model \| `off` (`REVIEW_GATE: off`)> |
 | `CODEGRAPH` | <`off` \| `<binary>` · project `<graph project name>` · indexed <YYYY-MM-DD> · refresh: `<index command>`> |
-| `AGENT_FILES` | <instruction files the planner created or changed: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` (only if present) \| none> |
+| `AGENT_FILES` | <instruction files the planner created or changed: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` … \| none> |
 
 <Only if CODEGRAPH is not off> **Code graph queries**: <the exact find-symbols · callers / callees · read-one-symbol · diff-impact commands from references/code-graph.md, project name filled in>
 

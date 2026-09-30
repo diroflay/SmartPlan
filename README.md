@@ -3,6 +3,11 @@
 **Smartly plan a multi-provider agentic workflow to achieve your next implementation task**
 
 `/smart-plan` prepare you a plan that the best model for each task implements, with every task tested and reviewed by a different model. 
+
+| Command | Workers |
+|---|---|
+| `/smart-plan` | one provider: Claude (from Claude Code) or OpenAI (from Codex) |
+| `/smart-plan-multi` | the best model per task across all providers below |
 You get better code for fewer tokens, and you never have to babysit the agent.
 
 It is compatible with all majors harnesses. Improve your agents coding skills by smartly planning your next feature implementation.
@@ -28,11 +33,11 @@ It is compatible with all majors harnesses. Improve your agents coding skills by
 npx skills add diroflay/SmartPlan
 ```
 
-**Manual**: copy `skills/smart-plan/` to `~/.agents/skills/smart-plan/` and link it where your harness looks. See [INSTALL.md](skills/smart-plan/INSTALL.md).
+**Manual**: copy `skills/<skill>/` to `~/.agents/skills/<skill>/` and link it where your harness looks. See [INSTALL.md](skills/smart-plan-multi/INSTALL.md).
 
 ## How to work with it
 
-One skill, two steps: ask for a plan, then ask any agent to implement it. The plan is executed by an **orchestrator** that never codes. It sends each task to the best model for that job across providers, gets every task reviewed independently, commits, and reports progress.
+Two steps: ask for a plan, then ask any agent to implement it. The plan is executed by an **orchestrator** that never codes. It sends each task to the best model for that job across providers, gets every task reviewed independently, commits, and reports progress.
 
 ```
 /smart-plan Add OAuth login with Google and GitHub. Sessions in Redis, 7-day expiry. Keep the existing email login working. No new frontend framework.
@@ -47,10 +52,10 @@ Describe the feature, what you expect and the constraints. The skill scans the c
 
 | Harness | Command |
 |---|---|
-| Claude Code · Antigravity CLI | `/smart-plan <feature, expectations, constraints>` |
-| Codex CLI | `$smart-plan <feature, expectations, constraints>` |
-| Gemini CLI | `Use the smart-plan skill: <feature, expectations, constraints>` |
-| opencode, others | ask for the `smart-plan` skill by name |
+| Claude Code · Antigravity CLI | `/smart-plan <…>` · `/smart-plan-multi <…>` |
+| Codex CLI | `$smart-plan <…>` · `$smart-plan-multi <…>` |
+| Gemini CLI | `Use the smart-plan-multi skill: <…>` |
+| opencode, others | ask for the skill by name |
 
 Examples:
 
@@ -65,7 +70,7 @@ Result:
 ✅ Smart Plan Created
 - File: .to-do/oauth-login.md
 - Parts: 4 (auth-backend — complex-backend — 40, session-store — backend — 20, ...)
-- Routing: backend → gpt-6-astra, frontend → qwen flash, review → Jev gate + reader
+- Routing: backend → sonnet, [lead] → opus, frontend → qwen flash, scout → luna, review → Jev gate + reader
 - Parallel-safe: session-store ∥ login-ui
 ```
 
@@ -105,12 +110,14 @@ Why it works: nobody grades their own work, expensive models only where they mat
 
 ## Configure
 
-Edit one file: `skills/smart-plan/routing.md`. Roles → models, alternates, and these switches:
+Edit one file: `skills/<skill>/routing.md`. Roles → models, alternates, and these switches (defaults: multi · mono):
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `ON_MISSING` | `abort` | `fallback` uses the next reachable model |
-| `REQUIRE_OPENROUTER` | `on` | OpenRouter key mandatory as safety net for quota failures |
+| `USE_JEV` | — · `ask` | mono only: asks yes / no for the Jev gate each run; `yes` / `no` to stop asking |
+| `PROVIDER` | — · `host` | mono only: `anthropic`, `openai`, or the provider of the running model |
+| `REQUIRE_OPENROUTER` | `on` · `off` | OpenRouter key mandatory as safety net for quota failures |
 | `REQUIRE_CODEGRAPH` | `off` | `on` for very large repos |
 | `STRICT_HOST` | `on` | planner and orchestrator must be the routed model |
 | `MULTI_PROVIDER_REPO` | `on` | makes project rules reach every provider's workers (`AGENTS.md` as single source) |
@@ -118,24 +125,25 @@ Edit one file: `skills/smart-plan/routing.md`. Roles → models, alternates, and
 
 ## Requirements
 
-- `git`, plus the CLIs of the providers you route to (`claude`, `codex`, `gemini` or `agy`, `opencode`)
+- `git`, plus the CLIs of the providers you route to (mono: `claude` or `codex` · multi: also `gemini` or `agy`, `opencode`)
 - API keys or subscriptions for those providers, `TYPESAFE_API_KEY` for the Jev review gate
 - `curl` for the gate
 
 Preflight tells you what is missing and how to install it:
 
 ```bash
-bash skills/smart-plan/scripts/preflight.sh check
+bash skills/smart-plan-multi/scripts/preflight.sh check
 ```
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\smart-plan\scripts\preflight.ps1 check
+powershell -ExecutionPolicy Bypass -File skills\smart-plan-multi\scripts\preflight.ps1 check
 ```
 
 ## Layout
 
 ```
 .claude-plugin/         plugin + marketplace manifests
-skills/smart-plan/
+skills/smart-plan/        mono-provider skill (Claude or OpenAI), same layout minus adapters/
+skills/smart-plan-multi/
   SKILL.md              the skill (standard Agent Skills frontmatter)
   routing.md            who does what — the only file to edit
   references/           preflight, providers, plan template, multi-provider repo

@@ -2,7 +2,7 @@
 
 [verified 0.11.0 on Windows 11: Git Bash and Windows PowerShell 5.1, native binary, no WSL]
 
-Binary: `routing.md` § Code graph (env `SP_CODEGRAPH`). Use its **CLI** only, from a plain shell — never through an MCP client.
+Tool and binary are set in `routing.md` § Code graph (env `SP_CODEGRAPH` for the scripts). One static binary for Windows, macOS and Linux (amd64 / arm64), 160+ languages, MIT, fully local. Used through its **CLI**, so it works from any harness with a shell — no MCP client, no per-harness setup, none of the 7k+ tokens of MCP tool descriptions per session. Worth it only on a very large repo or monorepo (measurement: `harness-internals.md`).
 
 | Action | Command (always `cli --quiet`: without it a log line pollutes the output) |
 |---|---|

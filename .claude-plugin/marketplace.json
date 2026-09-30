@@ -5,15 +5,15 @@
     "url": "https://github.com/diroflay"
   },
   "metadata": {
-    "description": "SmartPlan marketplace: multi-provider planning skill for coding agents.",
-    "version": "1.0.0"
+    "description": "SmartPlan marketplace: single- and multi-provider planning skills for coding agents.",
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "smart-plan",
       "source": "./",
-      "description": "Multi-provider implementation plans with per-model workers and independent review.",
-      "version": "1.0.0",
+      "description": "Single- or multi-provider implementation plans with per-model workers and independent review.",
+      "version": "1.1.0",
       "author": {
         "name": "diroflay"
       },
