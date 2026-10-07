@@ -28,7 +28,7 @@ Preflight checks exactly what this table needs; §4 of every plan is generated f
 | complex-frontend [lead] | anthropic: opus | openai: astra latest · qwen: max latest | hardest pieces only |
 | complex-frontend [cont] | qwen: flash latest | anthropic: sonnet · deepseek: flash latest · zai: glm flash latest | cheap continuation; `sonnet` when the continuation is still hard |
 | critical pieces | the [lead] model of the piece's layer | that row's alternates | dangerous code (list: `SKILL.md` Phase 2): always [lead], never [cont], even inside a non-complex part; review = gate + reader **and** the arbiter |
-| test-writer | openai: sol latest | anthropic: sonnet | codes the orchestrator's test list before implementation — an executant, it designs nothing; never the same model as the part's implementer — else first alternate |
+| test-writer | openai: sol latest | anthropic: sonnet | codes the orchestrator's test list before implementation — an executant, it designs nothing; never the same model or session as the part's implementer — else first alternate |
 | scout | openai: luna latest | deepseek: flash latest · zai: glm flash latest | writes the context pack of a part; read-only — cheapest paid model per task. Paid on purpose: never a free model |
 | review gate | typesafe: jev-latest | none (`REVIEW_GATE: off`) | typed, calibrated answers about the diff, one call per review; reasoning-heavy checks go to the reader |
 | review reader | openai: luna latest | deepseek: flash latest · zai: glm flash latest | cheap model paired with the gate on **every** review: reads the diff and its surroundings, writes the defect lines; never the author's model — else first alternate |

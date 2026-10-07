@@ -1,4 +1,4 @@
-# smart-plan-multi — Install & Use (v1.1.0)
+# smart-plan-multi — Install & Use (v1.2.0)
 
 An [Agent Skill](https://agentskills.io/specification) with standard frontmatter only: the same folder works in every harness.
 

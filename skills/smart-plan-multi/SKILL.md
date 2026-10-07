@@ -3,7 +3,7 @@ name: smart-plan-multi
 description: Creates a multi-provider implementation plan for a feature and saves it to .to-do/. The plan tells an orchestrator agent how to dispatch coding work to the best model per task type across providers (Anthropic, OpenAI, Google, DeepSeek, GLM, Qwen, OpenRouter), review each task independently, commit, journal and report progress. Use only when the user asks for a multi-provider or cross-provider plan, or invokes smart-plan-multi with a feature request. A plain smart plan or a single-provider plan goes to smart-plan. Not for executing or resuming a plan.
 compatibility: Needs shell access and git. Uses whichever of these CLIs the routing requires - claude, codex, agy or gemini, opencode - plus curl for the Jev review gate.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Smart Plan Multi

@@ -3,7 +3,7 @@ name: smart-plan
 description: Creates a single-provider implementation plan for a feature and saves it to .to-do/. The plan tells an orchestrator agent how to dispatch coding work to the best model per task type within one provider - Anthropic (Claude Code) or OpenAI (Codex) - review each task independently, commit, journal and report progress. Use when the user asks for a smart plan, a multi-agent or multi-model plan with one provider, or invokes smart-plan with a feature request. For several providers use smart-plan-multi. Not for an ordinary implementation plan, and not for executing or resuming a plan.
 compatibility: Needs shell access and git. Uses claude or codex (the chosen provider), curl for the optional Jev review gate, and opencode only for the optional OpenRouter channel.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Smart Plan

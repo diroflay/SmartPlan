@@ -29,7 +29,7 @@ Cell = primary, then alternates in order. `latest` = resolved live at preflight 
 | complex-frontend [lead] | opus · fable | astra latest | hardest pieces only |
 | complex-frontend [cont] | sonnet · opus | sol latest · astra latest | cheap continuation; first alternate when the continuation is still hard |
 | critical pieces | the [lead] model of the piece's layer | the [lead] model of the piece's layer | dangerous code (list: `SKILL.md` Phase 2): always [lead], never [cont], even inside a non-complex part; review = gate + reader **and** the arbiter |
-| test-writer | haiku · sonnet | luna latest · sol latest | codes the orchestrator's test list before implementation — an executant, it designs nothing; never the same model as the part's implementer — else first alternate |
+| test-writer | haiku · sonnet | luna latest · sol latest | codes the orchestrator's test list before implementation — an executant, it designs nothing; never the same model or session as the part's implementer — else first alternate |
 | scout | sonnet · haiku | luna latest · sol latest | writes the context pack of a part; read-only |
 | review gate | typesafe: jev-latest | typesafe: jev-latest | only if `USE_JEV` is yes: typed, calibrated answers about the diff, one call per review |
 | review reader | sonnet · haiku | luna latest · sol latest | cheap model paired with the gate on **every** review; never the author's model — else first alternate |

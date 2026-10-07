@@ -34,11 +34,23 @@ It pipes the brief to the worker, applies the timeout (default 1800 s), runs wri
    - Check the pack: it names the files to change, gives at least 3 `path:line` facts, and contains no advice or plan. Otherwise re-dispatch once, to the scout's alternate.
 2. **Major part** (plan §3): write the sub-plan `W/subplans/<NN>-<part>.md` (template below). It must be implementable **without the main plan**: copy into it the needed sentences of plan §1–§3 (objective, conventions, contracts, commands) and the context pack. Split the part into tasks; tag each with type, [lead]/[cont], file scope, criteria, verify. **Minor part**: no sub-plan — it is one task; copy those same sentences into its brief. A minor part that turns out to need several tasks becomes major.
 3. **Tests first** (parts marked so in plan §3): **you design the tests, the test-writer only codes them.** You hold the spec, so you decide what must be tested for the part to be valid: write the **test list** in plain text — one bullet per test, in the sub-plan (minor part: in the tests brief) — covering per criterion the normal case and the edge and failure cases that matter. Dispatch the **test-writer** (plan §4) with the tests brief. It adds, drops and redesigns nothing, and never sees an implementation, so the tests carry no implementer bias. Then run the tests yourself: they must **fail because the feature is missing**, not on a syntax, import or setup error; otherwise send it back (max 2 rounds, then ask the user). From then on the test files are **frozen**: out of scope for every implementer, and part of the part's verify command.
-4. Per task: write the brief, `<id>.goal` and `<id>.criteria` (§3) → dispatch the routed worker → read only its result file → review (§3) → FAIL: send the review file to the same worker session (max 2 fix rounds, then re-dispatch to the lead model; third failure: stop, journal, ask the user). A worker that thinks a frozen test is wrong reports `BLOCKED` with the reason; you decide, and only the test-writer session may change the test.
+4. Per task: write the brief, `<id>.goal` and `<id>.criteria` (§3) → dispatch the routed worker → read only its result file → review (§3) → FAIL: send the review file to the same worker session (max 2 fix rounds, then re-dispatch to the lead model; third failure: stop, journal, ask the user). A worker that thinks a frozen test is wrong reports `BLOCKED` with the reason; the test change gate below decides.
 5. Complex parts: [lead] tasks first. The lead's result must include a **HANDOFF** note (what exists, patterns established, files to imitate, remaining work); paste it into the [cont] briefs. **[critical] pieces are [lead] work, never [cont]** — a [cont] task that turns out to touch dangerous code is stopped and that piece re-dispatched to the lead.
 6. Part passes when all its tasks passed review and the part's verify command passes → commit (§4) → journal → progress line (§5).
 7. **Final review** — when every part is committed: run the plan §1 commands (full suite, lint, typecheck), then put the **whole feature** through §3 like a task: goal = plan §1 goal, criteria = the plan §1 overall criteria (G1…), diff = env `SP_DIFF_BASE=<base>` (`git diff <base>...HEAD`), sliced, verify = those commands. It looks for what per-task reviews cannot see: parts not wired together, contract mismatches, a broken end-to-end flow. FAIL → each failed criterion becomes a fix task (brief → worker → review → commit), then the final review again (max 2 rounds, then ask the user).
 8. Done only when the final review returns PASS on every overall criterion. Then the final summary.
+
+**Separation of roles — only you decide**
+- Test-writer, implementer and reviewer of a task are **distinct agents**: each its own fresh session and brief; test-writer and reviewer never the implementer's model (plan §4). Never resume one role's session for another role. A native subagent counts only if spawned fresh.
+- The test-writer never sees the implementation (no feature source, diff or implementer result). The implementer never creates, edits, skips or deletes a test file.
+- After every implementer dispatch, fix rounds included: `git diff --stat -- <test paths>` must be empty. Any change → revert it, task **FAIL**, journal it.
+- Workers report; you decide. No worker decides that a test is wrong, a criterion optional or a task done.
+
+**Test change gate** — on a `BLOCKED` about a test, judge against the spec (plan §1–§3, contracts), never against the implementation:
+- **Allowed** only when the test contradicts the spec or a contract, checks something the spec does not require, or is itself broken (setup, fixture, flaky).
+- **Refused** when the change makes the test pass by asking less: weaker or removed assertion, skip, wider tolerance, mocked-out behaviour under test, expected value copied from the implementation's output. "The code cannot do it", "rounds are running out", "everything else passes" are never reasons: that is a FAIL to fix in the code, or a blocker for the user.
+- The change alters a success criterion, or you are in doubt, or it is the second change asked on the same test → ask the user.
+- Accepted → you rewrite the test-list bullet, a fresh test-writer session codes it (revised bullet only, not the implementation), you run it, journal `<id> | Tn changed: <reason against the spec>`.
 
 **Token discipline**
 - Never load worker transcripts, full diffs or whole files you do not need. Read result files (≤15 lines) and `git diff --stat`.
@@ -67,7 +79,7 @@ Read first: <sub-plan path> (section <task-id>). <HANDOFF note if any>
 Goal: <what must be true>
 Files in scope: <paths>. Touch nothing else.
 Done when: <criteria>; `<verify command>` passes.
-Rules: follow the conventions given above. No git write commands (no add/commit/push/branch). No new dependencies unless listed. Infer intent and act; do not ask questions.
+Rules: follow the conventions given above. Never create, edit, skip or delete a test file — a test you think is wrong: STATUS BLOCKED with the reason; do not work around it. No git write commands (no add/commit/push/branch). No new dependencies unless listed. Infer intent and act; do not ask questions.
 Report: write ≤15 lines to <RESULT path>: STATUS (DONE|BLOCKED) · files changed · verify output tail · decisions worth knowing · HANDOFF (lead only). Your final message must be that same report.
 ```
 
@@ -88,7 +100,7 @@ Report: your final message is the report (the script saves it), ≤40 lines — 
 
 **Tests brief** — `W/tasks/<part-id>.tests.brief.md`
 ```markdown
-Role: test writer. You code exactly the tests listed below — nothing more, nothing less. No feature code, no stubs of the feature.
+Role: test writer. You code exactly the tests listed below — nothing more, nothing less. No feature code, no stubs of the feature; do not read the feature's implementation if one exists.
 Context: <everything needed to write them without guessing, copied from plan §2–§3 and the context pack: test framework and version · where tests live and how they are named · an existing test file to imitate · fixtures, factories, mocks and helpers available · how to set up and tear down state (db, server, auth) · the contracts under test, exact (routes, signatures, schemas, events, UI selectors or roles) · single-test command>
 Tests to write (one test per bullet; name each test `<Tn> <criterion id> <name>`):
 - T1 [c1] <name> — given <state / input> · when <action through the public contract> · then <exact expected result>
@@ -178,7 +190,7 @@ Branch: … · Progress: NN% · Current: P2/T3 · Next action: … · Open worke
 <YYYY-MM-DD HH:MM> | P1 | committed a1b2c3d · 20%
 <YYYY-MM-DD HH:MM> | P2.T1 | channel switch subscription→openrouter (quota)
 ```
-Log: sub-plan written, task PASS / FAIL outcome, commits, channel or model switches, decisions that change the plan, blockers. Nothing else.
+Log: sub-plan written, task PASS / FAIL outcome, commits, channel or model switches, test changes and refusals, decisions that change the plan, blockers. Nothing else.
 
 **Resume** (any harness, any session): journal `State` block → `run status wait 1 <RESULT>` per open worker session (a detached worker may have finished or still be running — never dispatch it twice) → `git status` + `git log --oneline -5` → the current sub-plan (minor part: its plan §3 entry) → continue from `Next action`. Do not re-read the main plan top to bottom.
 

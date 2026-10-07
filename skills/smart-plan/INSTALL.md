@@ -1,4 +1,4 @@
-# smart-plan — Install & Use (v1.1.0)
+# smart-plan — Install & Use (v1.2.0)
 
 Single-provider twin of `smart-plan-multi`: same workflow, protocol and scripts, every coding role on **one** provider — Anthropic (`claude`) or OpenAI (`codex`). An [Agent Skill](https://agentskills.io/specification) with standard frontmatter only. This file is for humans.
 
