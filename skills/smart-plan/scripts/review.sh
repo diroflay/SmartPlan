@@ -25,8 +25,9 @@
 #       Combines the slices' .gate files into P.gate by the meaning of the question, never by average:
 #       done = best slice, true = worst slice, false = highest slice, gap = the slice with the best done.
 #       Same verdict, printing and P.gate.txt as gate.
-#   review.sh verdict <P> <reader-result-file>
-#       Combines the reader's verdict with P.gate.txt (absent = gate off: the reader decides alone), writes
+#   review.sh verdict <P> <reader-result-file> [<reader2-result-file>]
+#       Combines the reader's verdict with P.gate.txt (absent = gate off: the reader decides alone). A second
+#       reader takes the gate's place (no P.gate.txt allowed): same verdict = that verdict, else ESCALATE. Writes
 #       P.review.md (at most 12 lines), prints review=PASS|FAIL|ESCALATE (plus reason=... when the reader
 #       gave no verdict). The reader's verdict is a line "VERDICT: <one word>" (markdown marks allowed); a
 #       defect counts as concrete only with a path:line token (a path with / or \ or a .ext, then :digits).
@@ -45,7 +46,7 @@ usage() {
 usage: review.sh prep    <P> <verify-command|-|none> [path ...]
        review.sh gate    <P> <rubric: backend,frontend,critical|none>
        review.sh merge   <P> <sliceP> [<sliceP> ...]
-       review.sh verdict <P> <reader-result-file>
+       review.sh verdict <P> <reader-result-file> [<reader2-result-file>]
 EOF
   exit 2
 }
@@ -326,10 +327,9 @@ cmd_merge() {
 }
 
 # ---------------------------------------------------------------- verdict
-cmd_verdict() {
-  [ $# -eq 2 ] || usage
-  P=$1; rf=$2
-  [ "$rf" != "-" ] || die "every review has a reader: give the reader's result file"
+# Parses one reader result file <rf> into reader (PASS|FAIL|ESCALATE|none), unmet, defects, concrete (0|1).
+read_reader() {
+  rf=$1
   [ -f "$rf" ] || die "reader result file not found: $rf"
   # Anchored: the whole line is the verdict, so the template line "VERDICT: PASS | FAIL | ESCALATE" is no verdict.
   # shellcheck disable=SC2016  # the backtick is a literal markdown mark in the pattern
@@ -346,6 +346,18 @@ cmd_verdict() {
     if [ "$first" = none ]; then defects=""
     elif printf '%s\n' "$defects" | sed 's/^.*DEFECTS://' | grep -Eq "$prx"; then concrete=1; fi
   fi
+}
+
+cmd_verdict() {
+  [ $# -eq 2 ] || [ $# -eq 3 ] || usage
+  P=$1
+  [ "$2" != "-" ] || die "every review has a reader: give the reader's result file"
+  reader2=""; unmet2=""; defects2=""
+  if [ $# -eq 3 ]; then
+    [ ! -f "$P.gate.txt" ] || die "a second reader replaces the gate: remove $P.gate.txt or give one reader"
+    read_reader "$3"; reader2=$reader; unmet2=$unmet; defects2=$defects
+  fi
+  read_reader "$2"
   gate=off; findings=""; disputed=""
   if [ -f "$P.gate.txt" ]; then
     gate=$(tr -d '\r' < "$P.gate.txt" | grep -E '^gate=(pass|fail|uncertain)$' | head -1 | sed 's/^gate=//')
@@ -355,19 +367,30 @@ cmd_verdict() {
   fi
   reason=""
   if [ "$reader" = none ]; then result=ESCALATE; reason="reader gave no verdict"
+  elif [ "$reader2" = none ]; then result=ESCALATE; reason="reader2 gave no verdict"
+  elif [ -n "$reader2" ]; then
+    # Two readers in place of the gate: agreement decides, any split goes to the arbiter.
+    if [ "$reader" = "$reader2" ]; then result=$reader; else result=ESCALATE; fi
   elif [ "$gate" = off ]; then result=$reader
   elif [ "$reader" = PASS ] && [ "$gate" = pass ]; then result=PASS
   elif [ "$reader" = FAIL ] && [ "$gate" = fail ]; then result=FAIL
   elif [ "$reader" = FAIL ] && [ "$concrete" -eq 1 ]; then result=FAIL
   else result=ESCALATE; fi
   {
-    echo "RESULT: $result  (reader=$reader gate=$gate)"
+    if [ -n "$reader2" ]; then echo "RESULT: $result  (reader=$reader reader2=$reader2)"
+    else echo "RESULT: $result  (reader=$reader gate=$gate)"; fi
     [ -z "$reason" ] || echo "reason: $reason"
-    [ -z "$unmet" ] || printf '%s\n' "$unmet"
-    [ -z "$defects" ] || printf '%s\n' "$defects"
+    if [ -n "$reader2" ]; then
+      # at most 5 lines per reader, so a split always shows both sides to the arbiter
+      printf '%s\n%s\n' "$unmet" "$defects" | awk 'NF && n < 5 { print; n++ }'
+      printf '%s\n%s\n' "$unmet2" "$defects2" | awk 'NF && n < 5 { print "reader2 " $0; n++ }'
+    else
+      [ -z "$unmet" ] || printf '%s\n' "$unmet"
+      [ -z "$defects" ] || printf '%s\n' "$defects"
+    fi
     [ -z "$findings" ] || printf '%s\n' "$findings"
     if [ "$result" = ESCALATE ] && [ -n "$disputed" ]; then echo "$disputed"; fi
-  } | head -12 > "$P.review.md"
+  } | awk 'NR <= 12' > "$P.review.md"
   echo "review=$result"
   [ -z "$reason" ] || echo "reason=$reason"
   exit 0

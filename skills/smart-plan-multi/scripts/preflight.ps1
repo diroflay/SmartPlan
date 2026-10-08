@@ -103,6 +103,13 @@ function Check-Provider($p) {
         elseif ($st -match '"loggedIn":true') { Row INFO anthropic.subscription 'logged in, no subscription type reported' '' }
         else { Row MISSING anthropic.subscription 'claude installed, not logged in' 'claude auth login' }
       } else { Row MISSING anthropic.subscription 'claude CLI not installed' 'https://code.claude.com/docs' }
+      # the haiku alias means Haiku 5.x only from Claude Code 2.1.293 on
+      if (Has claude) {
+        $cv = [string](Ver claude)
+        if ($cv -match '^\s*(\d+)\.(\d+)\.(\d+)' -and [version]"$($Matches[1]).$($Matches[2]).$($Matches[3])" -lt [version]'2.1.293') {
+          Row MISSING anthropic.version "claude $cv is older than 2.1.293 (haiku would not be Haiku 5.x)" 'claude update'
+        }
+      }
       if (EnvSet 'ANTHROPIC_API_KEY') { $key = $true; Row OK anthropic.api-key present '' } else { Row INFO anthropic.api-key 'ANTHROPIC_API_KEY not set' '' }
       Channel anthropic $sub $key $true
     }
@@ -212,7 +219,8 @@ function Cache-Put($h, $m) {   # never fails (an unwritable home is ignored)
 }
 $script:smokeRc = 0
 function Smoke-One($h, $m, $t) {   # prints one row, sets $script:smokeRc to the dispatch exit code
-  $age = Cache-Hit $h $m
+  $age = -1   # claude haiku is never cached: its resolved model ID is checked on every run
+  if (-not ($h -ceq 'claude' -and $m -ceq 'haiku')) { $age = Cache-Hit $h $m }
   if ($age -ge 0) { Row OK "smoke.$h" "$m replied (cached $($age)h ago)" ''; $script:smokeRc = 0; return }
   $tmp = Join-Path ([IO.Path]::GetTempPath()) ("sp-smoke-" + [Guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory -Force -Path $tmp | Out-Null
@@ -221,7 +229,15 @@ function Smoke-One($h, $m, $t) {   # prints one row, sets $script:smokeRc to the
   & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $here 'dispatch.ps1') $h $m read $tmp (Join-Path $tmp 'brief.md') (Join-Path $tmp 'result.md') $t | Out-Null
   $rc = $LASTEXITCODE
   $res = Join-Path $tmp 'result.md'
-  if ($rc -eq 0 -and (Test-Path $res) -and ((Get-Content -Raw $res) -cmatch '(^|[^A-Za-z0-9_])OK([^A-Za-z0-9_]|$)')) { Row OK "smoke.$h" "$m replied" ''; Cache-Put $h $m }
+  $old = ''   # Haiku before 5 is too weak for its routed roles (Bedrock / Vertex / Foundry aliases lag behind)
+  if ($h -ceq 'claude' -and $m -ceq 'haiku') {
+    $ev = ''; if (Test-Path "$res.events") { $ev = Get-Content -Raw "$res.events" }
+    if ($ev -notmatch '"model":"[^"]*claude-haiku-([5-9]|[1-9][0-9])') {
+      $old = 'unknown'; if ($ev -match '"model":"([^"]*)"') { $old = $Matches[1] }
+    }
+  }
+  if ($rc -eq 0 -and $old) { Row MISSING "smoke.$h" "haiku resolved to $old, Haiku 5 or newer needed" 'Anthropic API key or Claude plan channel, claude update' }
+  elseif ($rc -eq 0 -and (Test-Path $res) -and ((Get-Content -Raw $res) -cmatch '(^|[^A-Za-z0-9_])OK([^A-Za-z0-9_]|$)')) { Row OK "smoke.$h" "$m replied" ''; Cache-Put $h $m }
   else {
     $why = ''
     foreach ($f in "$res.stderr", "$res.events") {

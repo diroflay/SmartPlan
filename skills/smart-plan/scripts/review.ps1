@@ -24,8 +24,9 @@
 #       Combines the slices' .gate files into P.gate by the meaning of the question, never by average:
 #       done = best slice, true = worst slice, false = highest slice, gap = the slice with the best done.
 #       Same verdict, printing and P.gate.txt as gate.
-#   review.ps1 verdict <P> <reader-result-file>
-#       Combines the reader's verdict with P.gate.txt (absent = gate off: the reader decides alone), writes
+#   review.ps1 verdict <P> <reader-result-file> [<reader2-result-file>]
+#       Combines the reader's verdict with P.gate.txt (absent = gate off: the reader decides alone). A second
+#       reader takes the gate's place (no P.gate.txt allowed): same verdict = that verdict, else ESCALATE. Writes
 #       P.review.md (at most 12 lines), prints review=PASS|FAIL|ESCALATE (plus reason=... when the reader
 #       gave no verdict). The reader's verdict is a line "VERDICT: <one word>" (markdown marks allowed); a
 #       defect counts as concrete only with a path:line token (a path with / or \ or a .ext, then :digits).
@@ -45,7 +46,7 @@ function Usage {
   [Console]::Error.WriteLine('usage: review.ps1 prep    <P> <verify-command|-|none> [path ...]')
   [Console]::Error.WriteLine('       review.ps1 gate    <P> <rubric: backend,frontend,critical|none>')
   [Console]::Error.WriteLine('       review.ps1 merge   <P> <sliceP> [<sliceP> ...]')
-  [Console]::Error.WriteLine('       review.ps1 verdict <P> <reader-result-file>')
+  [Console]::Error.WriteLine('       review.ps1 verdict <P> <reader-result-file> [<reader2-result-file>]')
   exit 2
 }
 function Full($p) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p) }
@@ -376,10 +377,8 @@ function CmdMerge($a) {
 }
 
 # ---------------------------------------------------------------- verdict
-function CmdVerdict($a) {
-  if ($a.Count -ne 2) { Usage }
-  $pre = $a[0]; $rf = $a[1]
-  if ($rf -ceq '-') { Die "every review has a reader: give the reader's result file" }
+# Parses one reader result file into reader (PASS|FAIL|ESCALATE|none), unmet, defects, concrete.
+function ReadReader($rf) {
   if (-not (IsFile $rf)) { Die "reader result file not found: $rf" }
   $rl = ReadLines $rf
   $reader = 'none'; $unmet = @(); $defects = @(); $on = $false
@@ -396,6 +395,20 @@ function CmdVerdict($a) {
     if ($first -ceq 'none') { $defects = @() }
     else { foreach ($l in $defects) { if (($l -creplace '^.*DEFECTS:', '') -cmatch '(^|[\s(`<"''])([A-Za-z]:)?[A-Za-z0-9_@+./\\-]*([/\\]|\.[A-Za-z0-9]+)[A-Za-z0-9_@+./\\-]*:[0-9]+') { $concrete = $true } } }
   }
+  return @{ reader = $reader; unmet = $unmet; defects = $defects; concrete = $concrete }
+}
+
+function CmdVerdict($a) {
+  if ($a.Count -ne 2 -and $a.Count -ne 3) { Usage }
+  $pre = $a[0]
+  if ($a[1] -ceq '-') { Die "every review has a reader: give the reader's result file" }
+  $r2 = $null
+  if ($a.Count -eq 3) {
+    if (IsFile "$pre.gate.txt") { Die "a second reader replaces the gate: remove $pre.gate.txt or give one reader" }
+    $r2 = ReadReader $a[2]
+  }
+  $r = ReadReader $a[1]
+  $reader = $r.reader; $unmet = $r.unmet; $defects = $r.defects; $concrete = $r.concrete
   $gate = 'off'; $findings = @(); $disputed = ''
   if (IsFile "$pre.gate.txt") {
     $gate = ''
@@ -408,14 +421,26 @@ function CmdVerdict($a) {
   }
   $reason = ''
   if ($reader -ceq 'none') { $result = 'ESCALATE'; $reason = 'reader gave no verdict' }
+  elseif ($r2 -and $r2.reader -ceq 'none') { $result = 'ESCALATE'; $reason = 'reader2 gave no verdict' }
+  elseif ($r2) {
+    # Two readers in place of the gate: agreement decides, any split goes to the arbiter.
+    if ($reader -ceq $r2.reader) { $result = $reader } else { $result = 'ESCALATE' }
+  }
   elseif ($gate -ceq 'off') { $result = $reader }
   elseif ($reader -ceq 'PASS' -and $gate -ceq 'pass') { $result = 'PASS' }
   elseif ($reader -ceq 'FAIL' -and $gate -ceq 'fail') { $result = 'FAIL' }
   elseif ($reader -ceq 'FAIL' -and $concrete) { $result = 'FAIL' }
   else { $result = 'ESCALATE' }
-  $md = @("RESULT: $result  (reader=$reader gate=$gate)")
+  if ($r2) { $md = @("RESULT: $result  (reader=$reader reader2=$($r2.reader))") }
+  else { $md = @("RESULT: $result  (reader=$reader gate=$gate)") }
   if ($reason) { $md += "reason: $reason" }
-  $md += $unmet; $md += $defects; $md += $findings
+  if ($r2) {
+    # at most 5 lines per reader, so a split always shows both sides to the arbiter
+    $one = @(@($unmet) + @($defects) | Where-Object { $_ -match '\S' }); if ($one.Count -gt 5) { $one = $one[0..4] }
+    $two = @(@($r2.unmet) + @($r2.defects) | Where-Object { $_ -match '\S' }); if ($two.Count -gt 5) { $two = $two[0..4] }
+    $md += $one; foreach ($l in $two) { $md += "reader2 $l" }
+  } else { $md += $unmet; $md += $defects }
+  $md += $findings
   if ($result -ceq 'ESCALATE' -and $disputed -ne '') { $md += $disputed }
   if ($md.Count -gt 12) { $md = $md[0..11] }
   WriteText "$pre.review.md" (($md -join "`n") + "`n")

@@ -84,7 +84,7 @@ Output the Report below.
 - **Planned by**: <model> in <harness> <(routed planner was …) if different>
 - **Provider**: <anthropic | openai> (<host | forced by routing.md | named in the request>)
 - **Parts**: <n> (<name — type — weight>, …)
-- **Routing**: <role → model via channel>, … · Review: <Jev gate + reader | reader alone (Jev: no)>, arbiter
+- **Routing**: <role → model via channel>, … · Review: <Jev gate + reader | two readers (Jev: no)>, arbiter
 - **Substitutions**: <none | role: primary → alternate (reason)>
 - **Provider drift**: <none | harness or model: what changed vs the snapshot | not checked (no web access)>
 - **Parallel-safe**: <pairs | none>

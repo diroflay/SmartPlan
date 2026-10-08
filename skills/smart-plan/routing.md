@@ -5,7 +5,7 @@ Every coding role goes to **one provider**: Anthropic (`claude`) or OpenAI (`cod
 ## Policy
 
 - `PROVIDER: host` — the provider of the model running the skill: a Claude model → `anthropic`, a GPT model → `openai`, anything else → ask the user which of the two (non-interactive run: abort). Set `anthropic` or `openai` to force it. A provider named in the feature request (`provider=openai`) wins for that run.
-- `USE_JEV: ask` — at Phase 0 the skill asks the user one yes / no question: use the Jev review gate? **yes** → gate on, `TYPESAFE_API_KEY` required · **no** → no Jev at all, plan `GATE` = `off` (`scripts/protocol.md` §3). Non-interactive run → no. Set `yes` or `no` to stop asking.
+- `USE_JEV: ask` — at Phase 0 the skill asks the user one yes / no question: use the Jev review gate? **yes** → gate on, `TYPESAFE_API_KEY` required · **no** → no Jev at all, plan `GATE` = `off`: a second reader takes the gate's place (`scripts/protocol.md` §3). Non-interactive run → no. Set `yes` or `no` to stop asking.
 - `ON_MISSING: abort` — if any **primary** of the chosen column is unreachable, write no plan and report what is missing. Set to `fallback` to use the first reachable alternate of the same column instead (the report then lists every substitution). Never falls back to the other provider.
 - `CHANNEL_ORDER: subscription > api-key > openrouter` — cheapest first (price check: `references/harness-internals.md` § Channel prices).
 - `REQUIRE_OPENROUTER: off` — OpenRouter is an optional third channel to the same models (quota safety net, through the `opencode` bridge). Set `on` to make a valid OpenRouter key and `opencode` mandatory: missing → abort, whatever `ON_MISSING` says.
@@ -30,9 +30,9 @@ Cell = primary, then alternates in order. `latest` = resolved live at preflight 
 | complex-frontend [cont] | sonnet · opus | sol latest · astra latest | cheap continuation; first alternate when the continuation is still hard |
 | critical pieces | the [lead] model of the piece's layer | the [lead] model of the piece's layer | dangerous code (list: `SKILL.md` Phase 2): always [lead], never [cont], even inside a non-complex part; review = gate + reader **and** the arbiter |
 | test-writer | haiku · sonnet | luna latest · sol latest | codes the orchestrator's test list before implementation — an executant, it designs nothing; never the same model or session as the part's implementer — else first alternate |
-| scout | sonnet · haiku | luna latest · sol latest | writes the context pack of a part; read-only |
+| scout | haiku · sonnet | luna latest · sol latest | writes the context pack of a part; read-only; several in parallel when a part is large (`scripts/protocol.md` §2) |
 | review gate | typesafe: jev-latest | typesafe: jev-latest | only if `USE_JEV` is yes: typed, calibrated answers about the diff, one call per review |
-| review reader | sonnet · haiku | luna latest · sol latest | cheap model paired with the gate on **every** review; never the author's model — else first alternate |
+| review reader | haiku · sonnet | luna latest · sol latest | cheap model paired with the gate on **every** review; gate `off` → two haiku readers in fresh sessions (no other provider in this skill), the second takes the gate's place (`scripts/protocol.md` §3); never the author's model — else first alternate |
 | review arbiter | opus · fable | astra latest | strongest model that is not the author's; when the author is already the strongest, the same model in a fresh read-only session with none of the author's history. Only when gate and reader disagree, on ESCALATE, and as extra judge for [critical] tasks and the final review once gate and reader pass |
 | other | haiku · sonnet | luna latest | docs, config, chores |
 

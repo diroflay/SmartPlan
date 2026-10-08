@@ -88,7 +88,7 @@ By tier, for the version that was latest on that date; a newer version may cost 
 
 | Model | Official key | OpenRouter (default host) | Subscription |
 |---|---|---|---|
-| fable 5.1 · opus 5.5 · sonnet 5.5 · haiku 4.5 | 10 / 50 · 4 / 20 · 2 / 10 · 1 / 5 | same | Claude Pro / Max |
+| fable 5.1 · opus 5.5 · sonnet 5.5 · haiku 5.5 | 10 / 50 · 4 / 20 · 2 / 10 · 0.10 / 0.50 (haiku: prompts > 100k tokens bill 5×; checked 2026-10-08) | same | Claude Pro / Max |
 | gpt-6-astra · gpt-6-sol · gpt-6-luna | 10 / 50 · 2 / 10 · 0.10 / 0.50 (sol: prompts > 272k tokens bill 2× in / 1.5× out) | same | ChatGPT plan |
 | gemini 3.1 pro · 3.8 flash | 2 / 12 · 0.75 / 3.75 | same | Google AI plan (`agy`) |
 | deepseek-v4.1-flash | 0.30 / 1.20 peak · **0.15 / 0.60 off-peak**; cache hit 0.006 / 0.003 | 0.30 / 1.20 (cheaper third-party hosts exist, fp4 / fp8) | none |
@@ -99,9 +99,9 @@ By tier, for the version that was latest on that date; a newer version may cost 
 
 - **opus** ≥ fable on nearly every coding / agentic benchmark at 40 % of the price (AA Intelligence #1, Coding Agent Index #1 = 66, WebDev arena #1, best CodeRabbit review 8/13) → planner, orchestrator, [lead], arbiter. **fable** only as alternate.
 - **sonnet** ≈ **sol** (same price): sonnet has the best Terminal-Bench 4.0 of all (70.6) but the most output tokens per task measured by AA (~193k); sol ≈ astra on DeepSWE at ~1/5 the cost. Both = routine coding, never [lead].
-- **luna**: AA Intelligence 37 at $0.07 per task — about 4× cheaper than any other cheap model at similar quality → scout, reader, chores. Context window not published.
+- **luna**: AA Intelligence 37 at $0.07 per task — about 4× cheaper than any other cheap model at similar quality → scout, chores (reader: haiku, fewer hallucinations). Context window not published.
 - **deepseek flash** (V4.1): best cheap DeepSWE (74.2, vendor) and beats DeepSeek's own V4-Pro → cheap continuation. **glm flash** ≈ same price, first alternate. **qwen flash**: best cheap WebDev rank (#12) → frontend.
-- **haiku 4.5**: AA Intelligence 17, WebDev #111, retirement not before 2026-10-15, no successor yet. **Gemini**: newest Pro is still 3.1 preview; 3.8 flash costs ~5× the other flash models — not routed.
+- **haiku 5.5** (2026-10-07, checked 2026-10-08): AA Intelligence 43 (top small model, 13 below sonnet), Terminal-Bench 4.0 39.2 vs sonnet 70.6, HLE with tools 57.4 vs 64.5, AA-Omniscience hallucination 40 % vs luna 77 %, ~$0.21 per task at max effort in AA's runs (~3× luna; dispatch leaves the default `medium`). 1M context, adaptive thinking only (no `budget_tokens`, no custom temperature). Too weak for agentic coding → scout, reader, test-writer, chores; never implementer, [lead] or arbiter. The `haiku` alias is 5.5 only on the Anthropic API and Claude plans with Claude Code ≥ 2.1.293 (Bedrock / Vertex / Foundry: still 4.5) — preflight checks both. Sources: anthropic.com/claude-haiku-5-5, platform.claude.com/docs/en/models/haiku-5-5/overview, the-decoder.com (AA figures). **Gemini**: newest Pro is still 3.1 preview; 3.8 flash costs ~5× the other flash models — not routed.
 - Caveats: many scores are vendor-reported; SWE-bench Verified is contaminated; METR and SWE-rebench had not measured these models on that date. Sources: artificialanalysis.ai (leaderboards, articles on Sonnet 5.5, Opus 5.5, GPT-6 Astra, GPT-6 Sol / Luna), arena.ai/leaderboard/code/webdev, coderabbit.ai/blog/sonnet-5-5-model-review, api-docs.deepseek.com/updates, anthropic.com/claude-sonnet-5-5, learn.chatgpt.com/docs/models.
 
 OpenRouter adds no markup per token but charges **5.5 % on every credit purchase**, so at equal list price the official key is 5.5 % cheaper. DeepSeek off-peak = outside 01:00–04:00 and 06:00–10:00 UTC Monday–Friday. The only case where OpenRouter is cheaper is GLM 5.3 on third-party hosts (quantized). The Alibaba *Coding* Plan ($50 / month) does not include Qwen 3.8 and forbids non-interactive use.

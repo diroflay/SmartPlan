@@ -84,7 +84,7 @@ Output the Report below.
 - **File**: .to-do/<plan-name>.md
 - **Planned by**: <model> in <harness> <(routed planner was …) if different>
 - **Parts**: <n> (<name — type — weight>, …)
-- **Routing**: <role → model via channel>, … · Review: <gate + reader | reader alone (REVIEW_GATE: off)>, arbiter
+- **Routing**: <role → model via channel>, … · Review: <gate + reader | two readers (REVIEW_GATE: off)>, arbiter
 - **Substitutions**: <none | role: primary → alternate (reason)>
 - **Provider drift**: <none | harness or model: what changed vs the snapshot | not checked (no web access)>
 - **Parallel-safe**: <pairs | none>

@@ -70,7 +70,7 @@ Result:
 ✅ Smart Plan Created
 - File: .to-do/oauth-login.md
 - Parts: 4 (auth-backend — complex-backend — 40, session-store — backend — 20, ...)
-- Routing: backend → sonnet, [lead] → opus, frontend → qwen flash, scout → luna, review → Jev gate + reader
+- Routing: backend → sonnet, [lead] → opus, frontend → qwen flash, scout → luna, review → Jev gate + haiku reader
 - Parallel-safe: session-store ∥ login-ui
 ```
 
@@ -102,7 +102,7 @@ The orchestrator holds the whole picture and never writes code. Workers see only
 1. **Scout** — a cheap model maps the files and lines for each part.
 2. **Tests first** — the orchestrator lists the tests, a separate model codes them, then they are frozen.
 3. **Best model per task** — strong lead model for hard and dangerous code, cheap model for the rest.
-4. **Double review** — a calibrated gate (Jev) and a cheap reader judge every task. Disagreement goes to a strong arbiter. Fails go back to the worker, max two rounds.
+4. **Double review** — a calibrated gate (Jev) and a cheap reader judge every task; without Jev, two cheap readers in separate sessions. Disagreement goes to a strong arbiter. Fails go back to the worker, max two rounds.
 5. **Commit per part** — journal and progress updated.
 6. **Final review** — whole feature checked end to end: suite, lint, typecheck, wiring between parts.
 

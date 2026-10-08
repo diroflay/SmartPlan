@@ -10,7 +10,7 @@ Preflight checks exactly what this table needs; §4 of every plan is generated f
 - `REQUIRE_CODEGRAPH: off` — scout and reviewers explore with search and read (measured cheaper on a mid-size repo: `references/harness-internals.md` § Measurements). Set `on` for a very large repo or monorepo: the tool named under **Code graph** below must then be installed — missing → abort, whatever `ON_MISSING` says.
 - `STRICT_HOST: on` — the planner and the orchestrator must **be** the routed model (`references/preflight.md` §5). `off` = accept the running model (`host`).
 - `MULTI_PROVIDER_REPO: on` — once the plan is written, the skill makes the project rules reach the workers of every provider (`references/multi-provider.md`). Set `report` to change nothing and list what is missing, `off` to skip.
-- `REVIEW_GATE: jev` — the Jev gate joins the reader on every review (`TYPESAFE_API_KEY` required). `off` = no Jev at all, plan `GATE` = `off` (`scripts/protocol.md` §3).
+- `REVIEW_GATE: jev` — the Jev gate joins the reader on every review (`TYPESAFE_API_KEY` required). `off` = no Jev at all, plan `GATE` = `off`: a second reader takes the gate's place (`scripts/protocol.md` §3).
 - `SMOKE_TEST: on` — preflight sends one tiny "reply OK" request per routed model. Set `off` to check logins and model lists only.
 
 ## Roles
@@ -29,9 +29,9 @@ Preflight checks exactly what this table needs; §4 of every plan is generated f
 | complex-frontend [cont] | qwen: flash latest | anthropic: sonnet · deepseek: flash latest · zai: glm flash latest | cheap continuation; `sonnet` when the continuation is still hard |
 | critical pieces | the [lead] model of the piece's layer | that row's alternates | dangerous code (list: `SKILL.md` Phase 2): always [lead], never [cont], even inside a non-complex part; review = gate + reader **and** the arbiter |
 | test-writer | openai: sol latest | anthropic: sonnet | codes the orchestrator's test list before implementation — an executant, it designs nothing; never the same model or session as the part's implementer — else first alternate |
-| scout | openai: luna latest | deepseek: flash latest · zai: glm flash latest | writes the context pack of a part; read-only — cheapest paid model per task. Paid on purpose: never a free model |
+| scout | openai: luna latest | deepseek: flash latest · zai: glm flash latest | writes the context pack of a part; read-only — cheapest paid model per task. Paid on purpose: never a free model; several in parallel when a part is large (`scripts/protocol.md` §2) |
 | review gate | typesafe: jev-latest | none (`REVIEW_GATE: off`) | typed, calibrated answers about the diff, one call per review; reasoning-heavy checks go to the reader |
-| review reader | openai: luna latest | deepseek: flash latest · zai: glm flash latest | cheap model paired with the gate on **every** review: reads the diff and its surroundings, writes the defect lines; never the author's model — else first alternate |
+| review reader | anthropic: haiku | openai: luna latest · deepseek: flash latest | cheap model paired with the gate on **every** review: reads the diff and its surroundings, writes the defect lines; fewer hallucinations than luna (same list price, ~3× its cost per task); `REVIEW_GATE: off` → two readers in fresh sessions, the second on `luna` (first alternate), takes the gate's place (`scripts/protocol.md` §3); never the author's model — else first alternate |
 | review arbiter | strongest routed model from a provider other than the author (may be an alternate: preflight resolves and smokes it too) | only one provider reachable: its strongest model that is not the author's, else the author's model in a fresh read-only session | only when gate and reader disagree, on ESCALATE, and as extra judge for [critical] tasks and the final review once gate and reader pass |
 | other | cheapest routed model | | docs, config, chores |
 

@@ -93,6 +93,10 @@ check_provider() {
           *) row MISSING anthropic.subscription "claude installed, not logged in" "claude auth login" ;;
         esac
       else row MISSING anthropic.subscription "claude CLI not installed" "https://code.claude.com/docs"; fi
+      # the haiku alias means Haiku 5.x only from Claude Code 2.1.293 on
+      if has claude && ! ver claude | awk '$1 !~ /^[0-9]+\.[0-9]+\.[0-9]+$/ { exit 0 } { split($1, v, "."); exit !(v[1] > 2 || (v[1] == 2 && (v[2] > 1 || (v[2] == 1 && v[3] >= 293)))) }'; then
+        row MISSING anthropic.version "claude $(ver claude) is older than 2.1.293 (haiku would not be Haiku 5.x)" "claude update"
+      fi
       if envset ANTHROPIC_API_KEY; then key=0; row OK anthropic.api-key present; else row INFO anthropic.api-key "ANTHROPIC_API_KEY not set"; fi
       channel anthropic $sub $key yes ;;
     openai)
@@ -174,11 +178,17 @@ cache_put() { # <harness> <model> : never fails (an unwritable home is ignored)
   return 0
 }
 smoke_one() { # <harness> <model> <timeout_s> : prints one row, returns the dispatch exit code
-  if hrs=$(cache_hit "$1" "$2"); then row OK "smoke.$1" "$2 replied (cached ${hrs}h ago)"; return 0; fi
+  # claude haiku is never cached: its resolved model ID is checked on every run
+  if { [ "$1" != claude ] || [ "$2" != haiku ]; } && hrs=$(cache_hit "$1" "$2"); then row OK "smoke.$1" "$2 replied (cached ${hrs}h ago)"; return 0; fi
   tmp=$(mktemp -d 2>/dev/null || { d="${TMPDIR:-/tmp}/sp-smoke-$$-$1"; mkdir -p "$d"; echo "$d"; })
   printf 'Reply with exactly: OK\nDo nothing else. Do not use any tool.\n' > "$tmp/brief.md"
   bash "$here/dispatch.sh" "$1" "$2" read "$tmp" "$tmp/brief.md" "$tmp/result.md" "$3" >/dev/null 2>&1; rc=$?
-  if [ $rc -eq 0 ] && grep -qE '(^|[^A-Za-z0-9_])OK([^A-Za-z0-9_]|$)' "$tmp/result.md" 2>/dev/null; then row OK "smoke.$1" "$2 replied"; cache_put "$1" "$2"
+  old=""   # Haiku before 5 is too weak for its routed roles (Bedrock / Vertex / Foundry aliases lag behind)
+  if [ "$1" = claude ] && [ "$2" = haiku ] && ! grep -qE '"model":"[^"]*claude-haiku-([5-9]|[1-9][0-9])' "$tmp/result.md.events" 2>/dev/null; then
+    old=$(grep -oE '"model":"[^"]*"' "$tmp/result.md.events" 2>/dev/null | head -1 | sed 's/"model":"//; s/"$//'); old=${old:-unknown}
+  fi
+  if [ $rc -eq 0 ] && [ -n "$old" ]; then row MISSING "smoke.$1" "haiku resolved to $old, Haiku 5 or newer needed" "Anthropic API key or Claude plan channel, claude update"
+  elif [ $rc -eq 0 ] && grep -qE '(^|[^A-Za-z0-9_])OK([^A-Za-z0-9_]|$)' "$tmp/result.md" 2>/dev/null; then row OK "smoke.$1" "$2 replied"; cache_put "$1" "$2"
   else
     why=$(tail -c 300 "$tmp/result.md.stderr" 2>/dev/null | strip_ansi | tr '\r\n\t' '   ')
     [ -n "$(printf '%s' "$why" | tr -d ' ')" ] || why=$(tail -c 300 "$tmp/result.md.events" 2>/dev/null | strip_ansi | tr '\r\n\t' '   ')
